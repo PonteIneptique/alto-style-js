@@ -12,47 +12,53 @@
 	</style>
 </head>
 <body>
-	<div class="container">
-		<form method="GET" id="form_load">
-			<div class="form-group">
-				<label for="input_image">Image input</label>
-				<input class="form-control" type="file" id="input_image" aria-describedby="emailHelp" />
+	<div class="container-fluid">
+		<div class="row">
+			<div class="col-md-3" style="background-color: rgb(231,231,231); border-radius: 5px; padding: 1em;">
+				<form method="GET" id="form_load">
+					<div class="form-group">
+						<label for="input_image">Image input</label>
+						<input class="form-control" type="file" id="input_image" aria-describedby="emailHelp" />
+					</div>
+					<div class="form-group">
+						<label for="input_image">ALTO XML input</label>
+						<input class="form-control" type="file" id="input_xml" aria-describedby="emailHelp" />
+					</div>
+					<div class="form-group">
+						<label for="max_width">Max width</label>
+						<input class="form-control" type="integer" id="max_width" value="800" />
+					</div>
+					<button type="submit" class="btn btn-primary">Load</button>
+				</form>
+				<div id="legends">
+					<p>Put your mouse over a text zone and use one of the following key press. Size and color should be defined <b>BEFORE</b> loading an image. Press "d" to download.</p>
+					<ul>
+						<li id="legend_bold" key="b" fontstyle="bold" stylerefs="FONT_BOLD" color="#FF0000" style="color: #FF0000;">
+							<input type="color" value="#FF0000" />
+							Bold [Press b]
+						</li>
+						<li id="legend_italic" key="i" fontstyle="italic" stylerefs="FONT_ITALIC" color="#0000FF" style="color: #0000FF;">
+							<input type="color" value="#0000FF" />
+							Italic [Press i]
+						</li>
+						<li id="legend_normal" key="n" fontstyle="_" stylerefs="FONT_NORMAL" color="#FFA500" style="color: #FFA500;">
+							 <input type="color" value="#FFA500" />
+							Normal [Press n]
+						</li>
+					</ul>
+					<textarea id="show" style="display: none;"></textarea>
+				</div>
+				<div class="container">
+					<input type="button" name="download" class="btn btn-secondary" id="download" value="Download" />
+				</div>
+			</div>	
+			<div class="col-md-9">
+				<div id="viewer" style="min-height: 100px; margin:0 auto;">
+					<img id="image_target" width="100%" alt="Image non chargée" style="position:absolute; z-index: 0;" />
+					<svg id="svgOne" y="0" width="800" height="100" style="position:absolute; z-index: 1;">
+					</svg>
+				</div>
 			</div>
-			<div class="form-group">
-				<label for="input_image">ALTO XML input</label>
-				<input class="form-control" type="file" id="input_xml" aria-describedby="emailHelp" />
-			</div>
-			<div class="form-group">
-				<label for="max_width">Max width</label>
-				<input class="form-control" type="integer" id="max_width" value="800" />
-			</div>
-			<button type="submit" class="btn btn-primary">Load</button>
-		</form>
-		<div id="legends">
-			<p>Put your mouse over a text zone and use one of the following key press. Size and color should be defined <b>BEFORE</b> loading an image.</p>
-			<ul>
-				<li id="legend_bold" key="b" fontstyle="bold" stylerefs="FONT_BOLD" color="#FF0000" style="color: #FF0000;">
-					<input type="color" value="#FF0000" />
-					Bold [Press b]
-				</li>
-				<li id="legend_italic" key="i" fontstyle="italic" stylerefs="FONT_ITALIC" color="#0000FF" style="color: #0000FF;">
-					<input type="color" value="#0000FF" />
-					Italic [Press i]
-				</li>
-				<li id="legend_normal" key="n" fontstyle="_" stylerefs="FONT_NORMAL" color="#FFA500" style="color: #FFA500;">
-					 <input type="color" value="#FFA500" />
-					Normal [Press n]
-				</li>
-			</ul>
-			<textarea id="show" style="display: none;"></textarea>
-		</div>
-		<div class="container">
-			<input type="button" name="download" id="download" value="Download" />
-		</div>
-		<div id="viewer" style="min-height: 100px; margin:0 auto;">
-			<img id="image_target" width="100%" alt="Image non chargée" style="position:absolute; z-index: 0;" />S
-		   <svg id="svgOne" y="0" width="800" height="100" style="position:absolute; z-index: 1;">
-		   </svg>
 		</div>
 	</div>
 	<script type="text/javascript">
@@ -175,6 +181,7 @@
 				}
 			});
 			const new_lines_ids = 0;
+			const default_style = document.querySelector('#legend_normal').getAttribute("stylerefs");
 
 			const Strings = document.current_xml.getElementsByTagName("String");
 			for (var i = Strings.length - 1; i >= 0; i--) {
@@ -190,6 +197,10 @@
 					new_lines_ids += 1;
 					id_ = ""+new_lines_ids;
 					current.setAttributeNS(null, "ID", id_);
+				}
+				if (document.legends[style] == undefined) {
+					style = default_style;
+					current.setAttributeNS(null, "STYLEREFS", default_style);
 				}
 
 				let rect = document.createElementNS(svgns, 'rect');
@@ -239,7 +250,10 @@
 
 		/* Connect the form to the javascript functions */
 		document.querySelector("#form_load").addEventListener("submit", load_data);
-		document.addEventListener('keypress', rectKey);
+		document.addEventListener('keypress', function(event) {
+			if (event.key == "d") { document.querySelector("#download").click(); }
+			else { rectKey(event); }
+		});
 	</script>
 </body>
 </html>
