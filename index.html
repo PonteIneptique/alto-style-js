@@ -45,7 +45,7 @@
 							<input type="color" value="#FF0000" />
 							Bold [Press b]
 						</li>
-						<li id="legend_italic" key="i" fontstyle="italic" stylerefs="FONT_ITALIC" color="#0000FF" style="color: #0000FF;">
+						<li id="legend_italics" key="i" fontstyle="italics" stylerefs="FONT_ITALICS" color="#0000FF" style="color: #0000FF;">
 							<input type="color" value="#0000FF" />
 							Italic [Press i]
 						</li>
@@ -194,7 +194,7 @@
 			for (var i = Styles.length - 1; i >= 0; i--) {
 				let id_ = Styles[i].getAttribute("ID"),
 					fontstyle = Styles[i].getAttribute("FONTSTYLE");
-				if (fontstyle != "bold" && fontstyle != "italic") {
+				if (fontstyle != "bold" && fontstyle != "italics") {
 					fontstyle = "normal";
 				}
 				document.querySelector('#legend_'+fontstyle).setAttribute("stylerefs", id_);
@@ -235,6 +235,7 @@
 					current.setAttributeNS(null, "ID", id_);
 				}
 				if (document.legends[style] == undefined) {
+					console.log(style, document.legends)
 					style = default_style;
 					current.setAttributeNS(null, "STYLEREFS", default_style);
 				}
