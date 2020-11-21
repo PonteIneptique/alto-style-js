@@ -25,6 +25,13 @@
 						<input class="form-control" type="file" id="input_xml" aria-describedby="emailHelp" />
 					</div>
 					<div class="form-group">
+						<label for="namespace">Namespace</label>
+						<select id="namespace" class="form-control">
+							<option value="http://www.loc.gov/standards/alto/ns-v2#">V2 (Transkribus)</option>
+							<option value="http://www.loc.gov/standards/alto/ns-v4#">V4 (eScriptorium)</option>
+						</select>
+					</div>
+					<div class="form-group">
 						<label for="max_width">Max width</label>
 						<input class="form-control" type="integer" id="max_width" value="800" />
 					</div>
@@ -69,7 +76,11 @@
 		const svg = document.querySelector('#svgOne');
 		const show = document.querySelector('#show');
 		const svgns = "http://www.w3.org/2000/svg";
-		const altons = "http://www.loc.gov/standards/alto/ns-v2#";
+
+		const altons = function () { return document.querySelector("#namespace").value };
+
+		console.log(altons());
+
 		document.legends = {};
 
 		const prettifyXml = function(sourceXml){
@@ -172,6 +183,7 @@
 			document.current_xml = parser.parseFromString(text, "application/xml");
 			const namespaceResolver = document.createNSResolver(document.current_xml);
 			const page = document.current_xml.getElementsByTagName("Page")[0];
+			const current_alto_ns = altons();
 
 			const image_width = parseInt(document.querySelector('#max_width').value);
 			let ratio = image_width / parseInt(page.getAttribute("WIDTH"));
@@ -190,7 +202,7 @@
 			update_legends();
 			let textStylesContainer = document.current_xml.querySelector("Styles");
 			if (textStylesContainer == null) {
-				textStylesContainer = document.createElementNS(altons, 'Styles');
+				textStylesContainer = document.createElementNS(current_alto_ns, 'Styles');
 				document.current_xml.querySelector("Description").after(
 					textStylesContainer
 				);
@@ -198,7 +210,7 @@
 			[...document.querySelectorAll("#legends li")].forEach(function(el) {
 				let ref = el.getAttribute("stylerefs");
 				if (document.current_xml.querySelector("TextStyle[ID='"+ref+"']") == null) {
-					let new_style = document.createElementNS(altons, 'TextStyle');
+					let new_style = document.createElementNS(current_alto_ns, 'TextStyle');
 					new_style.setAttributeNS(null, 'ID', ref);
 					new_style.setAttributeNS(null, 'FONTSTYLE', el.getAttribute("fontstyle"));
 					textStylesContainer.appendChild(new_style);
