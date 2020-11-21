@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Annotate</title>
+	<meta charset="utf-8">
+	<link rel="stylesheet" href="index.css">
+	<style type="text/css">
+		.green {
+			opacity: 0.5;
+			background-color: green;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<form method="GET" id="form_load">
+			<div class="form-group">
+				<label for="input_image">Image input</label>
+				<input class="form-control" type="file" id="input_image" aria-describedby="emailHelp" />
+			</div>
+			<div class="form-group">
+				<label for="input_image">ALTO XML input</label>
+				<input class="form-control" type="file" id="input_xml" aria-describedby="emailHelp" />
+			</div>
+			<div class="form-group">
+				<label for="max_width">Max width</label>
+				<input class="form-control" type="integer" id="max_width" value="800" />
+			</div>
+			<button type="submit" class="btn btn-primary">Load</button>
+		</form>
+		<div id="legends">
+			<p>Put your mouse over a text zone and use one of the following key press. Size and color should be defined <b>BEFORE</b> loading an image.</p>
+			<ul>
+				<li id="legend_bold" key="b" fontstyle="bold" stylerefs="FONT_BOLD" color="#FF0000" style="color: #FF0000;">
+					<input type="color" value="#FF0000" />
+					Bold [Press b]
+				</li>
+				<li id="legend_italic" key="i" fontstyle="italic" stylerefs="FONT_ITALIC" color="#0000FF" style="color: #0000FF;">
+					<input type="color" value="#0000FF" />
+					Italic [Press i]
+				</li>
+				<li id="legend_normal" key="n" fontstyle="_" stylerefs="FONT_NORMAL" color="#FFA500" style="color: #FFA500;">
+					 <input type="color" value="#FFA500" />
+					Normal [Press n]
+				</li>
+			</ul>
+			<textarea id="show" style="display: none;"></textarea>
+		</div>
+		<div class="container">
+			<input type="button" name="download" id="download" value="Download" />
+		</div>
+		<div id="viewer" style="min-height: 100px; margin:0 auto;">
+			<img id="image_target" width="100%" alt="Image non chargée" style="position:absolute; z-index: 0;" />S
+		   <svg id="svgOne" y="0" width="800" height="100" style="position:absolute; z-index: 1;">
+		   </svg>
+		</div>
+	</div>
+	<script type="text/javascript">
+		let xml = null;
+		const viewer = document.querySelector('#viewer');
+		const image = document.querySelector('#image_target');
+		const svg = document.querySelector('#svgOne');
+		const show = document.querySelector('#show');
+		const svgns = "http://www.w3.org/2000/svg";
+		const altons = "http://www.loc.gov/standards/alto/ns-v2#";
+		document.legends = {};
+
+		const update_color_legend = function(elem) {
+			const li = elem.parentNode;
+			li.setAttribute("color", elem.value);
+			li.style.color = elem.value;
+		};
+
+		const colors = document.querySelectorAll("input[type='color']");
+
+		for (var i = colors.length - 1; i >= 0; i--) {
+			colors[i].addEventListener("change", function(e) {
+				update_color_legend(event.target);
+			});
+		};
+
+		document.querySelector("#download").addEventListener("click", function(e) {
+			e.preventDefault();
+			const serializer = new XMLSerializer();
+			show.innerText = serializer.serializeToString(document.current_xml);
+			download(
+				show.value,
+				document.querySelector('#input_xml').files[0].name,
+				"application/xml"
+			);
+		});
+		const update_legends = function() {
+			for (let li of document.querySelectorAll("#legends li")) {
+				document.legends[li.getAttribute("stylerefs")] = li.getAttribute("color");
+			}
+		}
+		const readImage = function() {
+			/**
+			 Read image
+			 */
+			const max_width = document.querySelector('#max_width');
+			const image_file = document.querySelector('#input_image').files[0];
+
+			const image_reader  = new FileReader();
+			image_reader.addEventListener("load", function () {
+				image.width = max_width.value;
+				image.src = image_reader.result;
+
+
+				svg.style.width = image.width+"px";
+				svg.style.height = image.height+"px";
+
+				viewer.style.width = max_width.value+"px";
+
+			}, false);
+
+			if (image_file) { image_reader.readAsDataURL(image_file); }
+		}
+		const empty = function(elem) {
+			while(elem.firstChild) elem.removeChild(elem.firstChild)
+		}
+		const rectOver = function(event) {
+			event.target.setAttributeNS(null, 'fill-opacity', '0.6');
+			event.target.style.strokeWidth = 2;
+			event.target.style.stroke = "rgb(0, 0, 0)";
+		};
+		const rectOut = function(event) {
+			event.target.setAttributeNS(null, 'fill-opacity', '0.4');
+			event.target.style.strokeWidth = 0;
+			event.target.style.stroke = "rgb(0, 0, 0)";
+		};
+		const rectKey = function(event) {
+			let here_rect = document.querySelector( "rect:hover" ),
+				here_legend = document.querySelector("#legends li[key='"+event.key+"']");
+
+			if (here_legend == null || here_rect == null) {
+				return false;
+			}
+			here_rect.setAttributeNS(
+				null,
+				"fill",
+				document.legends[here_legend.getAttribute("stylerefs")]
+			);
+			document.current_xml.querySelector("String[ID='"+here_rect.getAttribute("line-id")+"']").setAttributeNS(null, "STYLEREFS", here_legend.getAttribute("stylerefs"));
+		};
+		const parseFile = function(text) {
+			const parser = new DOMParser();
+			document.current_xml = parser.parseFromString(text, "application/xml");
+			const namespaceResolver = document.createNSResolver(document.current_xml);
+			const page = document.current_xml.getElementsByTagName("Page")[0];
+
+			const image_width = parseInt(document.querySelector('#max_width').value);
+			let ratio = image_width / parseInt(page.getAttribute("WIDTH"));
+
+			empty(svg);
+			// TextStyle ID="FONT0" FONTSTYLE=""
+			const Styles = document.current_xml.getElementsByTagName("TextStyle");
+			for (var i = Styles.length - 1; i >= 0; i--) {
+				let id_ = Styles[i].getAttribute("ID"),
+					fontstyle = Styles[i].getAttribute("FONTSTYLE");
+				if (fontstyle != "bold" && fontstyle != "italic") {
+					fontstyle = "normal";
+				}
+				document.querySelector('#legend_'+fontstyle).setAttribute("stylerefs", id_);
+			}
+			update_legends();
+			const textStylesContainer = document.current_xml.querySelector("Styles");
+			[...document.querySelectorAll("#legends li")].forEach(function(el) {
+				let ref = el.getAttribute("stylerefs");
+				if (document.current_xml.querySelector("TextStyle[ID='"+ref+"']") == null) {
+					let new_style = document.createElementNS(altons, 'TextStyle');
+					new_style.setAttributeNS(null, 'ID', ref);
+					new_style.setAttributeNS(null, 'FONTSTYLE', el.getAttribute("fontstyle"));
+					textStylesContainer.appendChild(new_style);
+				}
+			});
+
+			const Strings = document.current_xml.getElementsByTagName("String");
+			for (var i = Strings.length - 1; i >= 0; i--) {
+				let current = Strings[i];
+				let w = parseInt(current.getAttribute("WIDTH")),
+					h = parseInt(current.getAttribute("HEIGHT")),
+					x = parseInt(current.getAttribute("HPOS")),
+					y = parseInt(current.getAttribute("VPOS")),
+					id_ = current.getAttribute("ID"),
+					style = current.getAttribute("STYLEREFS");
+
+
+				let rect = document.createElementNS(svgns, 'rect');
+				rect.setAttributeNS(null, 'x', x*ratio);
+				rect.setAttributeNS(null, 'y', y*ratio);
+				rect.setAttributeNS(null, 'height', h*ratio);
+				rect.setAttributeNS(null, 'width', w*ratio);
+				rect.setAttributeNS(null, 'fill', document.legends[style]);
+				rect.setAttributeNS(null, 'fill-opacity', '0.4');
+				rect.setAttributeNS(null, 'line-id', id_)
+				rect.addEventListener("mouseover", rectOver);
+				rect.addEventListener("mouseleave", rectOut);
+				svg.appendChild(rect);
+			}
+		};
+		const load_data = function(e) {
+			e.preventDefault();
+			readImage();
+			/*
+			 *  Read XML
+			 */
+			const xml_file = document.querySelector('#input_xml').files[0];
+			const reader = new FileReader();
+			reader.addEventListener("load", function(event) {
+				text = reader.result;
+				parseFile(text);
+			});
+			reader.readAsText(xml_file);
+		};
+		const download = function(data, filename, type) {
+			const file = new Blob([data], {type: type});
+			if (window.navigator.msSaveOrOpenBlob) // IE10+
+				window.navigator.msSaveOrOpenBlob(file, filename);
+			else { // Others
+				const a = document.createElement("a"),
+				url = URL.createObjectURL(file);
+				a.href = url;
+				a.download = filename;
+				document.body.appendChild(a);
+				a.click();
+				setTimeout(function() {
+					document.body.removeChild(a);
+					window.URL.revokeObjectURL(url);  
+				}, 0); 
+			}
+		}
+
+		/* Connect the form to the javascript functions */
+		document.querySelector("#form_load").addEventListener("submit", load_data);
+		document.addEventListener('keypress', rectKey);
+	</script>
+</body>
+</html>
