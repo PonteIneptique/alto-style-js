@@ -29,6 +29,7 @@
 						<input class="form-control" type="integer" id="max_width" value="800" />
 					</div>
 					<button type="submit" class="btn btn-primary">Load</button>
+					<small>Sometimes, you need to press it twice, for some reason, to see the rectangles. Leave a second before reclicking.</small>
 				</form>
 				<div id="legends">
 					<p>Put your mouse over a text zone and use one of the following key press. Size and color should be defined <b>BEFORE</b> loading an image. Press "d" to download.</p>
@@ -71,6 +72,25 @@
 		const altons = "http://www.loc.gov/standards/alto/ns-v2#";
 		document.legends = {};
 
+		const prettifyXml = function(sourceXml){
+			let xsltDoc = new DOMParser().parseFromString(`<xsl:stylesheet version="1.0"
+ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+ <xsl:output omit-xml-declaration="yes" indent="yes"/>
+
+    <xsl:template match="node()|@*">
+      <xsl:copy>
+        <xsl:apply-templates select="node()|@*"/>
+      </xsl:copy>
+    </xsl:template>
+</xsl:stylesheet>`, 'application/xml');
+			console.log(xsltDoc);
+			let xsltProcessor = new XSLTProcessor();    
+			xsltProcessor.importStylesheet(xsltDoc);
+			const resultDoc = xsltProcessor.transformToDocument(sourceXml);
+			const resultXml = new XMLSerializer().serializeToString(resultDoc);
+			return resultXml;
+		};
+
 		const update_color_legend = function(elem) {
 			const li = elem.parentNode;
 			li.setAttribute("color", elem.value);
@@ -87,10 +107,8 @@
 
 		document.querySelector("#download").addEventListener("click", function(e) {
 			e.preventDefault();
-			const serializer = new XMLSerializer();
-			show.innerText = serializer.serializeToString(document.current_xml);
 			download(
-				show.value,
+				prettifyXml(document.current_xml),
 				document.querySelector('#input_xml').files[0].name,
 				"application/xml"
 			);
@@ -170,7 +188,13 @@
 				document.querySelector('#legend_'+fontstyle).setAttribute("stylerefs", id_);
 			}
 			update_legends();
-			const textStylesContainer = document.current_xml.querySelector("Styles");
+			let textStylesContainer = document.current_xml.querySelector("Styles");
+			if (textStylesContainer == null) {
+				textStylesContainer = document.createElementNS(svgns, 'Styles');
+				document.current_xml.querySelector("Description").after(
+					textStylesContainer
+				);
+			}
 			[...document.querySelectorAll("#legends li")].forEach(function(el) {
 				let ref = el.getAttribute("stylerefs");
 				if (document.current_xml.querySelector("TextStyle[ID='"+ref+"']") == null) {
@@ -180,7 +204,7 @@
 					textStylesContainer.appendChild(new_style);
 				}
 			});
-			const new_lines_ids = 0;
+			let new_lines_ids = 0;
 			const default_style = document.querySelector('#legend_normal').getAttribute("stylerefs");
 
 			const Strings = document.current_xml.getElementsByTagName("String");
@@ -195,7 +219,7 @@
 
 				if (id_ == null || id_ == undefined) {
 					new_lines_ids += 1;
-					id_ = ""+new_lines_ids;
+					id_ = "LINE_GEN_ID_"+new_lines_ids;
 					current.setAttributeNS(null, "ID", id_);
 				}
 				if (document.legends[style] == undefined) {
@@ -246,7 +270,7 @@
 					window.URL.revokeObjectURL(url);  
 				}, 0); 
 			}
-		}
+		};
 
 		/* Connect the form to the javascript functions */
 		document.querySelector("#form_load").addEventListener("submit", load_data);
