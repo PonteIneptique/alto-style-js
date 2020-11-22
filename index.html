@@ -41,18 +41,27 @@
 				<div id="legends">
 					<p>Put your mouse over a text zone and use one of the following key press. Size and color should be defined <b>BEFORE</b> loading an image. Press "d" to download.</p>
 					<ul>
-						<li id="legend_bold" key="b" fontstyle="bold" stylerefs="FONT_BOLD" color="#FF0000" style="color: #FF0000;">
-							<input type="color" value="#FF0000" />
-							Bold [Press b]
+						<li id="legend_bold" key="b" fontstyle="bold" stylerefs="FONT_BOLD" color="#D62728" style="color: #D62728;">
+							<input type="color" value="#D62728" /> <kbd>b</kbd>
+							Bold
 						</li>
-						<li id="legend_italics" key="i" fontstyle="italics" stylerefs="FONT_ITALICS" color="#0000FF" style="color: #0000FF;">
-							<input type="color" value="#0000FF" />
-							Italic [Press i]
+						<li id="legend_italics" key="i" fontstyle="italics" stylerefs="FONT_ITALICS" color="#1F77B4" style="color: #1F77B4;">
+							<input type="color" value="#1F77B4" /> <kbd>i</kbd>
+							Italic
 						</li>
-						<li id="legend_normal" key="n" fontstyle="_" stylerefs="FONT_NORMAL" color="#FFA500" style="color: #FFA500;">
-							 <input type="color" value="#FFA500" />
-							Normal [Press n]
+						<li id="legend_smallcaps" key="c" fontstyle="smallcaps" stylerefs="FONT_SMALLCAPS" color="#2CA02C" style="color: #2CA02C;">
+							 <input type="color" value="#2CA02C" /> <kbd>c</kbd>
+							Small caps [Press n]
 						</li>
+						<li id="legend_underline" key="u" fontstyle="underline" stylerefs="FONT_UNDERLINE" color="#9467BD" style="color: #9467BD;">
+							 <input type="color" value="#9467BD" /> <kbd>u</kbd>
+							Underline
+						</li>
+						<li default="true" id="legend__" key="n" fontstyle="_" stylerefs="FONT_NORMAL" color="#FF7F0E" style="color: #FF7F0E;">
+							 <input type="color" value="#FF7F0E" /> <kbd>n</kbd>
+							Normal
+						</li>
+						<!-- pink : #E377C2, cyan: #17BECF -->
 					</ul>
 					<textarea id="show" style="display: none;"></textarea>
 				</div>
@@ -125,6 +134,7 @@
 			);
 		});
 		const update_legends = function() {
+			document.legends = {}
 			for (let li of document.querySelectorAll("#legends li")) {
 				document.legends[li.getAttribute("stylerefs")] = li.getAttribute("color");
 			}
@@ -191,15 +201,22 @@
 			empty(svg);
 			// TextStyle ID="FONT0" FONTSTYLE=""
 			const Styles = document.current_xml.getElementsByTagName("TextStyle");
+			const default_style_fontstyle = document.querySelector('#legends li[default="true"]');
+			console.log(default_style_fontstyle);
 			for (var i = Styles.length - 1; i >= 0; i--) {
 				let id_ = Styles[i].getAttribute("ID"),
-					fontstyle = Styles[i].getAttribute("FONTSTYLE");
-				if (fontstyle != "bold" && fontstyle != "italics") {
-					fontstyle = "normal";
+					fontstyle = Styles[i].getAttribute("FONTSTYLE"),
+					exists = document.querySelector("#legends li[fontstyle='"+fontstyle+"']");
+
+				if (exists === null || exists === undefined) {
+					fontstyle = default_style_fontstyle.getAttribute("fontstyle");
 				}
+				console.log(default_style_fontstyle, fontstyle);
 				document.querySelector('#legend_'+fontstyle).setAttribute("stylerefs", id_);
+
 			}
 			update_legends();
+
 			let textStylesContainer = document.current_xml.querySelector("Styles");
 			if (textStylesContainer == null) {
 				textStylesContainer = document.createElementNS(current_alto_ns, 'Styles');
@@ -217,7 +234,7 @@
 				}
 			});
 			let new_lines_ids = 0;
-			const default_style = document.querySelector('#legend_normal').getAttribute("stylerefs");
+			const default_style = document.querySelector('#legends li[default=true]').getAttribute("stylerefs");
 
 			const Strings = document.current_xml.getElementsByTagName("String");
 			for (var i = Strings.length - 1; i >= 0; i--) {
@@ -291,6 +308,8 @@
 			if (event.key == "d") { document.querySelector("#download").click(); }
 			else { rectKey(event); }
 		});
+		update_legends();
+			console.log(document.legends);
 	</script>
 </body>
 </html>
