@@ -88,11 +88,11 @@
 
 		const altons = function () { return document.querySelector("#namespace").value };
 
-		console.log(altons());
-
 		document.legends = {};
 
 		const prettifyXml = function(sourceXml){
+			/** Make the XML pretty by applying it XSLT
+			*/
 			let xsltDoc = new DOMParser().parseFromString(`<xsl:stylesheet version="1.0"
  xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
  <xsl:output omit-xml-declaration="yes" indent="yes"/>
@@ -103,7 +103,6 @@
       </xsl:copy>
     </xsl:template>
 </xsl:stylesheet>`, 'application/xml');
-			console.log(xsltDoc);
 			let xsltProcessor = new XSLTProcessor();    
 			xsltProcessor.importStylesheet(xsltDoc);
 			const resultDoc = xsltProcessor.transformToDocument(sourceXml);
@@ -112,19 +111,22 @@
 		};
 
 		const update_color_legend = function(elem) {
+			/** [UI Only] Change the color of a style
+			*/
 			const li = elem.parentNode;
 			li.setAttribute("color", elem.value);
 			li.style.color = elem.value;
 		};
 
 		const colors = document.querySelectorAll("input[type='color']");
-
+		// Bind update_color_legend to Style checkboxes
 		for (var i = colors.length - 1; i >= 0; i--) {
 			colors[i].addEventListener("change", function(e) {
 				update_color_legend(event.target);
 			});
 		};
 
+		// Bind XML document downloading
 		document.querySelector("#download").addEventListener("click", function(e) {
 			e.preventDefault();
 			download(
@@ -133,20 +135,24 @@
 				"application/xml"
 			);
 		});
+
 		const update_legends = function() {
+			/** [UI Only] Update the legends
+			*
+			*/
 			document.legends = {}
 			for (let li of document.querySelectorAll("#legends li")) {
 				document.legends[li.getAttribute("stylerefs")] = li.getAttribute("color");
 			}
 		}
 		const readImage = function() {
-			/**
-			 Read image
+			/** Read the image file input and add it to the UI
+			 *
 			 */
 			const max_width = document.querySelector('#max_width');
 			const image_file = document.querySelector('#input_image').files[0];
-
 			const image_reader  = new FileReader();
+
 			image_reader.addEventListener("load", function () {
 				image.width = max_width.value;
 				image.src = image_reader.result;
@@ -161,20 +167,34 @@
 
 			if (image_file) { image_reader.readAsDataURL(image_file); }
 		}
+
 		const empty = function(elem) {
+			/** Remove elements in `elem`
+			 *
+			 */
 			while(elem.firstChild) elem.removeChild(elem.firstChild)
 		}
 		const rectOver = function(event) {
+			/** [UI Only] Change the style of an element (rectangle) for the overEffect
+			 *
+			 */
 			event.target.setAttributeNS(null, 'fill-opacity', '0.6');
 			event.target.style.strokeWidth = 2;
 			event.target.style.stroke = "rgb(0, 0, 0)";
 		};
 		const rectOut = function(event) {
+			/** [UI Only] Reset the style of the element from `rectOver`
+			 *
+			 */
 			event.target.setAttributeNS(null, 'fill-opacity', '0.4');
 			event.target.style.strokeWidth = 0;
 			event.target.style.stroke = "rgb(0, 0, 0)";
 		};
+		// Function that handles rewriting 
 		const rectKey = function(event) {
+			/** Handles changing the color AND the underlying XML element
+			 *
+			 */
 			let here_rect = document.querySelector( "rect:hover" ),
 				here_legend = document.querySelector("#legends li[key='"+event.key+"']");
 
@@ -186,9 +206,15 @@
 				"fill",
 				document.legends[here_legend.getAttribute("stylerefs")]
 			);
+			// Alto specific
 			document.current_xml.querySelector("String[ID='"+here_rect.getAttribute("line-id")+"']").setAttributeNS(null, "STYLEREFS", here_legend.getAttribute("stylerefs"));
 		};
+
 		const parseFile = function(text) {
+			/** Parse the XML File and adds square and stuff.
+			 *
+			 *
+			 */
 			const parser = new DOMParser();
 			document.current_xml = parser.parseFromString(text, "application/xml");
 			const namespaceResolver = document.createNSResolver(document.current_xml);
@@ -198,11 +224,13 @@
 			const image_width = parseInt(document.querySelector('#max_width').value);
 			let ratio = image_width / parseInt(page.getAttribute("WIDTH"));
 
+			// Removes the SVG annotations
 			empty(svg);
+
+			// Set-up the legends and color on the left menu
 			// TextStyle ID="FONT0" FONTSTYLE=""
 			const Styles = document.current_xml.getElementsByTagName("TextStyle");
 			const default_style_fontstyle = document.querySelector('#legends li[default="true"]');
-			console.log(default_style_fontstyle);
 			for (var i = Styles.length - 1; i >= 0; i--) {
 				let id_ = Styles[i].getAttribute("ID"),
 					fontstyle = Styles[i].getAttribute("FONTSTYLE"),
@@ -211,12 +239,13 @@
 				if (exists === null || exists === undefined) {
 					fontstyle = default_style_fontstyle.getAttribute("fontstyle");
 				}
-				console.log(default_style_fontstyle, fontstyle);
 				document.querySelector('#legend_'+fontstyle).setAttribute("stylerefs", id_);
 
 			}
+			// Reload the legends if necessary
 			update_legends();
 
+			//
 			let textStylesContainer = document.current_xml.querySelector("Styles");
 			if (textStylesContainer == null) {
 				textStylesContainer = document.createElementNS(current_alto_ns, 'Styles');
@@ -309,7 +338,6 @@
 			else { rectKey(event); }
 		});
 		update_legends();
-			console.log(document.legends);
 	</script>
 </body>
 </html>
